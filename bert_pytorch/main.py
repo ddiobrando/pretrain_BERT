@@ -14,20 +14,20 @@ from dataset import BERTDataset
 def train():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/BERT-pytorch/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
-    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/BERT-pytorch/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
-    parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/BERT-pytorch/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
-    parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/BERT-pytorch/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
-    parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/BERT-pytorch/kmeans_label.npy", type=str, help="kmeans_label.npy")
-    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/BERT-pytorch/output/test.model", type=str, help="ex)output/bert.model")
+    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
+    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
+    parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
+    parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
+    parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/kmeans_label.npy", type=str, help="kmeans_label.npy")
+    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/test.model", type=str, help="ex)output/bert.model")
 
     parser.add_argument("-hs", "--hidden", type=int, default=256, help="hidden size of transformer model")
     parser.add_argument("-l", "--layers", type=int, default=8, help="number of layers")
     parser.add_argument("-a", "--attn_heads", type=int, default=8, help="number of attention heads")
     parser.add_argument("-s", "--seq_len", type=int, default=40, help="maximum sequence len")
 
-    parser.add_argument("-b", "--batch_size", type=int, default=512, help="number of batch_size")
-    parser.add_argument("-e", "--epochs", type=int, default=10, help="number of epochs")
+    parser.add_argument("-b", "--batch_size", type=int, default=256, help="number of batch_size")
+    parser.add_argument("-e", "--epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
     parser.add_argument("--with_cuda", type=bool, default=True, help="training with CUDA: true, or false")

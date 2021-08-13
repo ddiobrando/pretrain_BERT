@@ -94,8 +94,8 @@ class BERTTrainer:
                               bar_format="{l_bar}{r_bar}")
 
         avg_loss = 0.0
-        total_correct = np.zeros(3)
-        total_element = np.zeros(3)
+        total_correct = np.zeros(2)
+        total_element = np.zeros(2)
 
         for i, data in data_iter:
             # 0. batch_data will be sent into the device(GPU or cpu)
@@ -119,6 +119,7 @@ class BERTTrainer:
 
             # 2-3. Adding class_loss and mask_loss : 3.4 Pre-training Procedure
             loss = cell_loss + drug_loss + dose_loss + mask_loss
+            print('cell_loss',cell_loss.item(),'drug_loss',drug_loss.item(),'dose_loss',dose_loss.item(),'mask_loss',mask_loss.item())
 
             # 3. backward and optimization only in train
             if train:
@@ -129,7 +130,7 @@ class BERTTrainer:
             avg_loss += loss.item()
 
             # prediction accuracy
-            for i,(output, class_type) in enumerate(zip([cell_output, drug_output, dose_output], ["cell", "drug", "dose"])):
+            for i,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
                 correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
                 total_correct[i] += correct
                 total_element[i] += data[class_type].nelement()

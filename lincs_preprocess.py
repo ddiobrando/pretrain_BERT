@@ -14,6 +14,7 @@ sigInfoCP = sigInfo[sigInfo["pert_type"]=='trt_cp']
 sigInfoCP = sigInfoCP[sigInfoCP["pert_dose_unit"]=='uM']
 sigInfoCP = sigInfoCP.sort_values("pert_time",ascending=False)
 sigInfoCP = sigInfoCP.groupby(["pert_dose", "cmap_name", "cell_iname"]).head(1)
+sigInfoCP.dropna(axis=0,subset=["pert_dose"],inplace=True)
 sigInfoCP.index = sigInfoCP["sig_id"]
 CPsig = sigInfoCP["sig_id"]
 
@@ -47,7 +48,14 @@ print(lincs_cp_test.data_df.shape)
 print(lincs_cp_test.col_metadata_df.shape)
 write_gctx.write(lincs_cp_test, "trt_cp_landmarkonly_test.gctx")
 
-
+#%%
+for i, row in sigInfoCP.iterrows():
+    if np.isnan(row["pert_dose"]):
+        print(row)
+#%%
+X=lincs_cp.data_df
+print(X.shape)
+print(X.dropna().shape)
 
 #%%
 """
