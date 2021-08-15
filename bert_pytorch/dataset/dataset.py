@@ -1,4 +1,3 @@
-from collections import defaultdict
 import numpy as np
 import pandas as pd
 from torch.utils.data import Dataset
@@ -9,14 +8,14 @@ import pdb
 
 
 class BERTDataset(Dataset):
-    def __init__(self, data_path, cell_vocab,drug_vocab,seq_len,kmeans_label):
+    def __init__(self, data_path, cell_vocab,drug_vocab):
         """Remove encoding="utf-8", corpus_lines=None, on_memory=True
         """
         self.cell_vocab = cell_vocab
         self.drug_vocab = drug_vocab
-        self.seq_len = seq_len
         data = parse.parse(data_path)
         self.data_df = data.data_df.values.T
+        self.seq_len = self.data_df.shape[1]
         self.cell = data.col_metadata_df["cell"].values
         self.drug = data.col_metadata_df["drug"].values
         self.dose = data.col_metadata_df["dose"].values
@@ -24,9 +23,7 @@ class BERTDataset(Dataset):
         self.cell_serie = pd.Series(cell_dict)
         drug_dict = {drug_name:i for i,drug_name in enumerate(self.drug_vocab)}
         self.drug_serie = pd.Series(drug_dict)
-        self.kmeans_label = defaultdict(list)
-        for i, label in enumerate(kmeans_label):
-            self.kmeans_label[label].append(i)
+
 
     def __len__(self):
         return self.data_df.shape[0]
@@ -34,14 +31,15 @@ class BERTDataset(Dataset):
     def __getitem__(self, item):
         t1, cell, drug, dose = self.data_df[item], self.cell[item], self.drug[item], self.dose[item]
         t1, t1_label = self.random_number(t1)
-        t1_list, t1_label_list = [], []
-        for value in self.kmeans_label.values():
-            pad = torch.nn.ConstantPad1d(padding=(0, self.seq_len - len(value)), value=-666)
-            t1_list.append(pad(t1[value][:self.seq_len]))
-            t1_label_list.append(pad(t1_label[value][:self.seq_len]))
+        bert_input, bert_label = t1.unsqueeze(0), t1_label.unsqueeze(0)
+        #t1_list, t1_label_list = [], []
+        #for value in self.kmeans_label.values():
+        #    pad = torch.nn.ConstantPad1d(padding=(0, self.seq_len - len(value)), value=-666)
+        #    t1_list.append(pad(t1[value][:self.seq_len]))
+        #    t1_label_list.append(pad(t1_label[value][:self.seq_len]))
 
-        bert_input = torch.stack(t1_list,dim=0)
-        bert_label = torch.stack(t1_label_list, dim=0)
+        #bert_input = torch.stack(t1_list,dim=0)
+        #bert_label = torch.stack(t1_label_list, dim=0)
 
         cell_label = self.cell_serie[cell]
         drug_label = self.drug_serie[drug]

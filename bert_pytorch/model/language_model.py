@@ -17,13 +17,14 @@ class BERTLM(nn.Module):
 
         super().__init__()
         self.bert = bert
+        self.embedding = nn.Linear(seq_len, self.bert.hidden)
         self.cell_prediction = CellPrediction(self.bert.hidden, cell_size)
         self.drug_prediction = DrugPrediction(self.bert.hidden, drug_size)
         self.dose_prediction = DosePrediction(self.bert.hidden)
         self.mask_lm = MaskedLanguageModel(self.bert.hidden, seq_len)
 
     def forward(self, x):
-        x = self.bert(x)
+        x = self.bert(self.embedding(x))
         return self.cell_prediction(x),self.drug_prediction(x), self.dose_prediction(x), self.mask_lm(x)
 
 
@@ -41,7 +42,7 @@ class CellPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x[:, 0]))
+        return self.softmax(self.linear(x)).squeeze(1)
 
 
 class DrugPrediction(nn.Module):
@@ -58,7 +59,7 @@ class DrugPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x[:, 0]))
+        return self.softmax(self.linear(x)).squeeze(1)
 
 
 class DosePrediction(nn.Module):
@@ -75,7 +76,7 @@ class DosePrediction(nn.Module):
         self.linear = nn.Linear(hidden, 1)
 
     def forward(self, x):
-        return self.linear(x[:, 0])
+        return self.linear(x).squeeze(1)
 
 
 class MaskedLanguageModel(nn.Module):

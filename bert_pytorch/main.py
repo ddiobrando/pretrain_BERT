@@ -19,14 +19,13 @@ def train():
     parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/kmeans_label.npy", type=str, help="kmeans_label.npy")
-    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/test.model", type=str, help="ex)output/bert.model")
+    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/08151305/", type=str, help="ex)output/bert.model")
 
     parser.add_argument("-hs", "--hidden", type=int, default=256, help="hidden size of transformer model")
     parser.add_argument("-l", "--layers", type=int, default=8, help="number of layers")
     parser.add_argument("-a", "--attn_heads", type=int, default=8, help="number of attention heads")
-    parser.add_argument("-s", "--seq_len", type=int, default=40, help="maximum sequence len")
 
-    parser.add_argument("-b", "--batch_size", type=int, default=256, help="number of batch_size")
+    parser.add_argument("-b", "--batch_size", type=int, default=1024, help="number of batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
@@ -40,29 +39,31 @@ def train():
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="adam first beta value")
 
     args = parser.parse_args()
+    if not args.output_path.endswith('/'):
+        args.output_path += '/'
+    args.log_name = args.output_path
 
-    output_path=args.output_path.rsplit('/',1)[0]
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
+    if not os.path.exists(args.output_path):
+        os.makedirs(args.output_path)
     np.random.seed(0)
     random.seed(0)
 
     print("Loading Cell Vocab", args.cell_vocab_path)
     with open(args.cell_vocab_path) as f:
         cell_vocab = f.read().split('\n')
-    print("Vocab Size: ", len(cell_vocab))
+    print("Vocab Cell Size: ", len(cell_vocab))
     
     print("Loading Drug Vocab", args.drug_vocab_path)
     with open(args.drug_vocab_path) as f:
         drug_vocab = f.read().split('\n')
-    print("Vocab Size: ", len(drug_vocab))
+    print("Vocab Drug Size: ", len(drug_vocab))
 
-    kmeans_label = np.load(args.kmeans_labels_path)
     print("Loading Train Dataset", args.train_dataset)
-    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab,args.seq_len,kmeans_label)
+    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab)
+    args.seq_len = train_dataset.seq_len
 
     print("Loading Test Dataset", args.test_dataset)
-    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab,args.seq_len,kmeans_label) \
+    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab) \
         if args.test_dataset is not None else None
 
     print("Creating Dataloader")
@@ -76,7 +77,7 @@ def train():
     print("Creating BERT Trainer")
     trainer = BERTTrainer(bert, len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
                           lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
-                          with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq)
+                          with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name)
 
     print("Training Start")
     for epoch in range(args.epochs):

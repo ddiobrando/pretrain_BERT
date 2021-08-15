@@ -9,7 +9,7 @@ class BERT(nn.Module):
     BERT model : Bidirectional Encoder Representations from Transformers.
     """
 
-    def __init__(self, hidden=768, n_layers=12, attn_heads=12, dropout=0.1, seq_len=40):
+    def __init__(self, hidden=768, n_layers=12, attn_heads=12, dropout=0.1, seq_len=978):
         """
         :param hidden: BERT model hidden size
         :param n_layers: numbers of Transformer blocks(layers)
@@ -27,7 +27,6 @@ class BERT(nn.Module):
 
         # embedding for BERT, sum of positional, segment, token embeddings
         #self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=hidden)
-        self.embedding = nn.Linear(seq_len, hidden)
 
         # multi-layers transformer blocks, deep network
         self.transformer_blocks = nn.ModuleList(
@@ -36,11 +35,11 @@ class BERT(nn.Module):
     def forward(self, x):
         # attention masking for padded token
         # torch.ByteTensor([batch_size, 1, seq_len, seq_len)
-        mask = (x > -666).unsqueeze(1)#.repeat(1, x.size(1), 1).unsqueeze(1)
+        #mask = (x > -666).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
+        mask = None
 
         # embedding the indexed sequence to sequence of vectors
         #x = self.embedding(x, segment_info)
-        x = self.embedding(x)
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
             x = transformer.forward(x, mask)

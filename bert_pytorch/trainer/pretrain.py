@@ -1,13 +1,25 @@
+import os
 import torch
 import torch.nn as nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 import numpy as np
-
+import json
 from model import BERTLM, BERT
 from trainer.optim_schedule import ScheduledOptim
 
 import tqdm
+
+
+def write(log_name, post_fix):
+    if os.path.exists(log_name):
+        with open(log_name, 'r') as f:
+            data = json.load(f)
+    else:
+        data = []
+    data.append(post_fix)
+    with open(log_name, 'w') as f:
+        json.dump(data, f)
 
 
 class BERTTrainer:
@@ -24,7 +36,7 @@ class BERTTrainer:
     def __init__(self, bert: BERT, cell_vocab_size: int, drug_vocab_size: int, seq_len: int,
                  train_dataloader: DataLoader, test_dataloader: DataLoader = None,
                  lr: float = 1e-4, betas=(0.9, 0.999), weight_decay: float = 0.01, warmup_steps=10000,
-                 with_cuda: bool = True, cuda_devices=None, log_freq: int = 10):
+                 with_cuda: bool = True, cuda_devices=None, log_freq: int = 10, log_name="train_info.json"):
         """
         :param bert: BERT model which you want to train
         :param vocab_size: total word vocab size
@@ -65,6 +77,7 @@ class BERTTrainer:
         self.mse = nn.MSELoss(reduction='mean')
 
         self.log_freq = log_freq
+        self.log_name = log_name
 
         print("Total Parameters:", sum([p.nelement() for p in self.model.parameters()]))
 
@@ -86,6 +99,8 @@ class BERTTrainer:
         :return: None
         """
         str_code = "train" if train else "test"
+        log_name = self.log_name+str_code+"_log.json"
+        epoch_log_name = self.log_name+str_code+"_epoch.json"
 
         # Setting the tqdm progress bar
         data_iter = tqdm.tqdm(enumerate(data_loader),
@@ -96,6 +111,10 @@ class BERTTrainer:
         avg_loss = 0.0
         total_correct = np.zeros(2)
         total_element = np.zeros(2)
+        total_dose_loss = 0.0
+        total_mask_loss = 0.0
+        total_dose_element = 0
+        total_mask_element = 0
 
         for i, data in data_iter:
             # 0. batch_data will be sent into the device(GPU or cpu)
@@ -119,7 +138,7 @@ class BERTTrainer:
 
             # 2-3. Adding class_loss and mask_loss : 3.4 Pre-training Procedure
             loss = cell_loss + drug_loss + dose_loss + mask_loss
-            print('cell_loss',cell_loss.item(),'drug_loss',drug_loss.item(),'dose_loss',dose_loss.item(),'mask_loss',mask_loss.item())
+            #print('cell_loss',cell_loss.item(),'drug_loss',drug_loss.item(),'dose_loss',dose_loss.item(),'mask_loss',mask_loss.item())
 
             # 3. backward and optimization only in train
             if train:
@@ -129,25 +148,39 @@ class BERTTrainer:
 
             avg_loss += loss.item()
 
-            # prediction accuracy
-            for i,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
-                correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
-                total_correct[i] += correct
-                total_element[i] += data[class_type].nelement()
-
-            post_fix = {
-                "epoch": epoch,
-                "iter": i,
-                "avg_loss": avg_loss / (i + 1),
-                "avg_acc": total_correct / total_element * 100,
-                "loss": loss.item()
-            }
-
             if i % self.log_freq == 0:
+                # prediction accuracy
+                for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
+                    correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
+                    total_correct[k] += correct
+                    total_element[k] += data[class_type].nelement()
+                total_dose_loss += dose_loss*data["dose"].nelement()
+                total_dose_element += data["dose"].nelement()
+                total_mask_loss += mask_loss*data["bert_input"].nelement()
+                total_mask_element += data["bert_input"].nelement()
+
+                post_fix = {
+                    "epoch": epoch,
+                    "iter": i,
+                    "avg_loss": avg_loss / (i + 1),
+                    "avg_acc": (total_correct / total_element * 100).tolist(),
+                    "cell_loss": cell_loss.item(),
+                    "drug_loss": drug_loss.item(),
+                    "dose_loss": dose_loss.item(),
+                    "mask_loss": mask_loss.item(),
+                    "loss": loss.item()
+                }
+                write(log_name, post_fix)
                 data_iter.write(str(post_fix))
 
-        print("EP%d_%s, avg_loss=" % (epoch, str_code), avg_loss / len(data_iter), "total_acc=",
-              total_correct * 100.0 / total_element)
+
+        epoch_log = {"epoch":epoch,
+        "avg_loss":avg_loss / len(data_iter),
+        "total_acc":(total_correct * 100.0 / total_element).tolist(),
+        "total_dose_rmse":(total_dose_loss/total_dose_element)**0.5,
+        "total_mask_rmse":(total_mask_loss/total_mask_element)**0.5}
+        write(epoch_log_name,epoch_log)
+        print(epoch_log)
 
     def save(self, epoch, file_path="output/bert_trained.model"):
         """
@@ -157,7 +190,7 @@ class BERTTrainer:
         :param file_path: model output path which gonna be file_path+"ep%d" % epoch
         :return: final_output_path
         """
-        output_path = file_path + ".ep%d" % epoch
+        output_path = file_path + ".ep%d.pth" % epoch
         torch.save(self.bert.cpu(), output_path)
         self.bert.to(self.device)
         print("EP:%d Model Saved on:" % epoch, output_path)
