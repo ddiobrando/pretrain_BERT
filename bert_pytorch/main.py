@@ -2,6 +2,7 @@ import argparse
 import os
 import pdb
 import random
+import torch
 
 from torch.utils.data import DataLoader
 import numpy as np
@@ -18,14 +19,14 @@ def train():
     parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
     parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
-    parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/kmeans_label.npy", type=str, help="kmeans_label.npy")
-    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/08151305/", type=str, help="ex)output/bert.model")
+    #parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/kmeans_label.npy", type=str, help="kmeans_label.npy")
+    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/0817/", type=str, help="ex)output/")
 
-    parser.add_argument("-hs", "--hidden", type=int, default=256, help="hidden size of transformer model")
-    parser.add_argument("-l", "--layers", type=int, default=8, help="number of layers")
-    parser.add_argument("-a", "--attn_heads", type=int, default=8, help="number of attention heads")
+    parser.add_argument("-hs", "--hidden", type=int, default=768, help="hidden size of transformer model")
+    parser.add_argument("-l", "--layers", type=int, default=12, help="number of layers")
+    parser.add_argument("-a", "--attn_heads", type=int, default=12, help="number of attention heads")
 
-    parser.add_argument("-b", "--batch_size", type=int, default=1024, help="number of batch_size")
+    parser.add_argument("-b", "--batch_size", type=int, default=128, help="number of batch_size")
     parser.add_argument("-e", "--epochs", type=int, default=100, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
@@ -33,7 +34,7 @@ def train():
     parser.add_argument("--log_freq", type=int, default=10, help="printing loss every n iter: setting n")
     parser.add_argument("--cuda_devices", type=int, nargs='+', default=None, help="CUDA device ids")
 
-    parser.add_argument("--lr", type=float, default=1e-3, help="learning rate of adam")
+    parser.add_argument("--lr", type=float, default=1e-4, help="learning rate of adam")
     parser.add_argument("--adam_weight_decay", type=float, default=0.01, help="weight_decay of adam")
     parser.add_argument("--adam_beta1", type=float, default=0.9, help="adam first beta value")
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="adam first beta value")
@@ -42,11 +43,12 @@ def train():
     if not args.output_path.endswith('/'):
         args.output_path += '/'
     args.log_name = args.output_path
-
+    print(args)
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
     np.random.seed(0)
     random.seed(0)
+    torch.random.seed(0)
 
     print("Loading Cell Vocab", args.cell_vocab_path)
     with open(args.cell_vocab_path) as f:
@@ -72,7 +74,7 @@ def train():
         if test_dataset is not None else None
 
     print("Building BERT model")
-    bert = BERT(hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads, seq_len=args.seq_len)
+    bert = BERT(hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
 
     print("Creating BERT Trainer")
     trainer = BERTTrainer(bert, len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,

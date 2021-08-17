@@ -1,7 +1,42 @@
+import torch
 import torch.nn as nn
 
 from model.bert import BERT
 
+#LayerModel
+class MLP(torch.nn.Module):
+    """
+    A multilayer perceptron with ReLU activations and optional BatchNorm.
+    """
+
+    def __init__(self, sizes, batch_norm=True, last_layer_act="linear"):
+        super(MLP, self).__init__()
+        layers = []
+        for s in range(len(sizes) - 1):
+            layers += [
+                torch.nn.Linear(sizes[s], sizes[s + 1]),
+                torch.nn.BatchNorm1d(sizes[s + 1])
+                if batch_norm and s < len(sizes) - 2 else None,
+                torch.nn.ReLU()
+            ]
+
+        layers = [l for l in layers if l is not None][:-1]
+        self.activation = last_layer_act
+        if self.activation == "linear":
+            pass
+        elif self.activation == "ReLU":
+            self.relu = torch.nn.ReLU()
+        else:
+            raise ValueError("last_layer_act must be one of 'linear' or 'ReLU'")
+
+        self.network = torch.nn.Sequential(*layers)
+
+    def forward(self, x):
+        if self.activation == "ReLU":
+           x = self.network(x)
+           dim = x.size(1) // 2
+           return torch.cat((self.relu(x[:, :dim]), x[:, dim:]), dim=1)
+        return self.network(x)
 
 class BERTLM(nn.Module):
     """
@@ -17,14 +52,14 @@ class BERTLM(nn.Module):
 
         super().__init__()
         self.bert = bert
-        self.embedding = nn.Linear(seq_len, self.bert.hidden)
+        self.embedding = MLP([seq_len,bert.hidden,bert.hidden])
         self.cell_prediction = CellPrediction(self.bert.hidden, cell_size)
         self.drug_prediction = DrugPrediction(self.bert.hidden, drug_size)
         self.dose_prediction = DosePrediction(self.bert.hidden)
         self.mask_lm = MaskedLanguageModel(self.bert.hidden, seq_len)
 
     def forward(self, x):
-        x = self.bert(self.embedding(x))
+        x = self.bert(self.embedding(x).unsqueeze(1))
         return self.cell_prediction(x),self.drug_prediction(x), self.dose_prediction(x), self.mask_lm(x)
 
 
@@ -93,4 +128,4 @@ class MaskedLanguageModel(nn.Module):
         self.linear = nn.Linear(hidden, seq_len)
 
     def forward(self, x):
-        return self.linear(x)
+        return self.linear(x).squeeze(1)

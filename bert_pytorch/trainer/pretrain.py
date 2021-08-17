@@ -57,7 +57,7 @@ class BERTTrainer:
         self.bert = bert
         # Initialize the BERT Language Model, with BERT model
         self.model = BERTLM(bert, cell_vocab_size, drug_vocab_size, seq_len).to(self.device)
-
+        print(self.model)
         # Distributed GPU training if CUDA can detect more than 1 GPU
         if with_cuda and torch.cuda.device_count() > 1:
             print("Using %d GPUS for BERT" % torch.cuda.device_count())
@@ -132,6 +132,7 @@ class BERTTrainer:
             cell_loss = self.nll(cell_output, data["cell"])
             drug_loss = self.nll(drug_output, data["drug"])
             dose_loss = self.mse(dose_output, data["dose"])
+            #dose_loss = self.mse(dose_output/data["dose"], torch.ones(dose_output.shape,device=self.device))
 
             # 2-2. MSELoss of predicting masked token word
             mask_loss = self.mse(mask_lm_output, data["bert_label"])
@@ -148,17 +149,17 @@ class BERTTrainer:
 
             avg_loss += loss.item()
 
-            if i % self.log_freq == 0:
-                # prediction accuracy
-                for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
-                    correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
-                    total_correct[k] += correct
-                    total_element[k] += data[class_type].nelement()
-                total_dose_loss += dose_loss*data["dose"].nelement()
-                total_dose_element += data["dose"].nelement()
-                total_mask_loss += mask_loss*data["bert_input"].nelement()
-                total_mask_element += data["bert_input"].nelement()
+            # prediction accuracy
+            for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
+                correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
+                total_correct[k] += correct
+                total_element[k] += data[class_type].nelement()
+            total_dose_loss += dose_loss.item()*data["dose"].nelement()
+            total_dose_element += data["dose"].nelement()
+            total_mask_loss += mask_loss.item()*data["bert_input"].nelement()
+            total_mask_element += data["bert_input"].nelement()
 
+            if i % self.log_freq == 0:
                 post_fix = {
                     "epoch": epoch,
                     "iter": i,
@@ -172,7 +173,6 @@ class BERTTrainer:
                 }
                 write(log_name, post_fix)
                 data_iter.write(str(post_fix))
-
 
         epoch_log = {"epoch":epoch,
         "avg_loss":avg_loss / len(data_iter),
@@ -190,8 +190,11 @@ class BERTTrainer:
         :param file_path: model output path which gonna be file_path+"ep%d" % epoch
         :return: final_output_path
         """
-        output_path = file_path + ".ep%d.pth" % epoch
-        torch.save(self.bert.cpu(), output_path)
+        bert_output_path = file_path + "bert.ep%d.pth" % epoch
+        torch.save(self.bert.cpu(), bert_output_path)
         self.bert.to(self.device)
-        print("EP:%d Model Saved on:" % epoch, output_path)
-        return output_path
+        lm_output_path = file_path + "lm.ep%d.pth" % epoch
+        torch.save(self.model.cpu(), lm_output_path)
+        self.model.to(self.device)
+        print("EP:%d Model Saved on:" % epoch, bert_output_path, lm_output_path)
+        return bert_output_path

@@ -18,7 +18,7 @@ class BERTDataset(Dataset):
         self.seq_len = self.data_df.shape[1]
         self.cell = data.col_metadata_df["cell"].values
         self.drug = data.col_metadata_df["drug"].values
-        self.dose = data.col_metadata_df["dose"].values
+        self.dose = np.log(data.col_metadata_df["dose"].values)
         cell_dict = {cell_name:i for i,cell_name in enumerate(self.cell_vocab)}
         self.cell_serie = pd.Series(cell_dict)
         drug_dict = {drug_name:i for i,drug_name in enumerate(self.drug_vocab)}
@@ -31,7 +31,8 @@ class BERTDataset(Dataset):
     def __getitem__(self, item):
         t1, cell, drug, dose = self.data_df[item], self.cell[item], self.drug[item], self.dose[item]
         t1, t1_label = self.random_number(t1)
-        bert_input, bert_label = t1.unsqueeze(0), t1_label.unsqueeze(0)
+        bert_input, bert_label = t1, t1_label
+        #bert_input, bert_label = t1.unsqueeze(0), t1_label.unsqueeze(0)
         #t1_list, t1_label_list = [], []
         #for value in self.kmeans_label.values():
         #    pad = torch.nn.ConstantPad1d(padding=(0, self.seq_len - len(value)), value=-666)
@@ -73,7 +74,7 @@ class BERTDataset(Dataset):
         bert_input: token
         bert_label: sentence
         """
-        tokens = sentence[:]
+        tokens = np.copy(sentence)
 
         for i, token in enumerate(sentence):
             prob = random.random()
