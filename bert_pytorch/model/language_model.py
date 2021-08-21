@@ -3,7 +3,7 @@ import torch.nn as nn
 
 from model.bert import BERT
 
-#LayerModel
+'''#LayerModel
 class MLP(torch.nn.Module):
     """
     A multilayer perceptron with ReLU activations and optional BatchNorm.
@@ -36,7 +36,7 @@ class MLP(torch.nn.Module):
            x = self.network(x)
            dim = x.size(1) // 2
            return torch.cat((self.relu(x[:, :dim]), x[:, dim:]), dim=1)
-        return self.network(x)
+        return self.network(x)'''
 
 class BERTLM(nn.Module):
     """
@@ -44,7 +44,7 @@ class BERTLM(nn.Module):
     Classification Model + Masked Language Model
     """
 
-    def __init__(self, bert: BERT, cell_size, drug_size, seq_len):
+    def __init__(self, bert: BERT, vocab_size, cell_size, drug_size):
         """
         :param bert: BERT model which should be trained
         :param vocab_size: total vocab size for masked_lm
@@ -52,14 +52,24 @@ class BERTLM(nn.Module):
 
         super().__init__()
         self.bert = bert
-        self.embedding = MLP([seq_len,bert.hidden,bert.hidden])
+        #kernel_size = 128
+        #stride = (seq_len-kernel_size)//10
+        #self.conv1d = nn.Conv1d(in_channels=1, out_channels=self.bert.hidden, kernel_size=kernel_size, stride=stride)
+        #self.linear1 = MLP([seq_len, self.bert.hidden, self.bert.hidden])
+        #self.linear2 = MLP([seq_len, self.bert.hidden, self.bert.hidden])
         self.cell_prediction = CellPrediction(self.bert.hidden, cell_size)
         self.drug_prediction = DrugPrediction(self.bert.hidden, drug_size)
         self.dose_prediction = DosePrediction(self.bert.hidden)
-        self.mask_lm = MaskedLanguageModel(self.bert.hidden, seq_len)
+        self.mask_lm = MaskedLanguageModel(self.bert.hidden, vocab_size)
 
     def forward(self, x):
-        x = self.bert(self.embedding(x).unsqueeze(1))
+        """
+        :param x: [batch_size, seq_len]
+        """
+        #x = self.conv1d(x.unsqueeze(1))
+        #x = x.permute(0,2,1)
+        #x = torch.stack([self.linear1(x),self.linear2(x)],axis=1)
+        x = self.bert(x)
         return self.cell_prediction(x),self.drug_prediction(x), self.dose_prediction(x), self.mask_lm(x)
 
 
@@ -77,7 +87,7 @@ class CellPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x)).squeeze(1)
+        return self.softmax(self.linear(x[:, 0, :]))
 
 
 class DrugPrediction(nn.Module):
@@ -94,7 +104,7 @@ class DrugPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x)).squeeze(1)
+        return self.softmax(self.linear(x[:, 0, :]))
 
 
 class DosePrediction(nn.Module):
@@ -111,7 +121,7 @@ class DosePrediction(nn.Module):
         self.linear = nn.Linear(hidden, 1)
 
     def forward(self, x):
-        return self.linear(x).squeeze(1)
+        return self.linear(x[:, 0, :])
 
 
 class MaskedLanguageModel(nn.Module):
@@ -120,12 +130,22 @@ class MaskedLanguageModel(nn.Module):
     regression problem
     """
 
-    def __init__(self, hidden, seq_len):
+    def __init__(self, hidden, vocab_size):
         """
         :param hidden: output size of BERT model
         """
         super().__init__()
-        self.linear = nn.Linear(hidden, seq_len)
+        #kernel_size = 128
+        #stride = (seq_len-kernel_size)//10
+        #self.conv = nn.ConvTranspose1d(in_channels=hidden, out_channels=1, kernel_size=kernel_size, stride=stride)
+        self.linear = nn.Linear(hidden, vocab_size)
+        self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.linear(x).squeeze(1)
+        """
+        :param: x: [batch_size, seq_len, hidden]
+        """
+        #x = x.permute(0, 2, 1)
+        #x = self.conv(x).squeeze(2)
+        #return x
+        return self.softmax(self.linear(x))

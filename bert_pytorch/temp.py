@@ -11,14 +11,14 @@ import numpy as np
 
 plt.switch_backend('agg')
 
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0816basemlp1e-4bs128/"
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0816basemlp/"
-result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0817/"
+#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_2_2/"
+result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_0/"
+#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_512_4_8/"
 
 #%%
 mode = 'train'
 print("evaluate " + mode)
-"""with open(result_dir + mode + "_log.json") as f:
+with open(result_dir + mode + "_log.json") as f:
     result = json.load(f)
 avg_loss = []
 loss = []
@@ -62,7 +62,7 @@ plt.close()
 plt.plot(mask_loss)
 plt.title('mask_loss')
 plt.savefig(result_dir + mode + "_mask_loss.png")
-plt.close()"""
+plt.close()
 
 with open(result_dir + mode + "_epoch.json") as f:
     result = json.load(f)
@@ -74,13 +74,14 @@ for line in result:
     cell_acc.append(line["total_acc"][0])
     drug_acc.append(line["total_acc"][1])
     dose_loss.append(line["total_dose_rmse"])
-    mask_loss.append(line["total_mask_rmse"])
+    #mask_loss.append(line["total_mask_rmse"])
 train = pd.DataFrame({
     "cell_acc": cell_acc,
     "drug_acc": drug_acc,
     "dose_rmse": dose_loss,
-    "mask_rmse": mask_loss
+    #"mask_rmse": mask_loss
 })
+train.to_csv(result_dir+mode+"_epoch.tsv",sep="\t")
 display(train)
 
 mode = 'test'
@@ -95,18 +96,20 @@ for line in result:
     cell_acc.append(line["total_acc"][0])
     drug_acc.append(line["total_acc"][1])
     dose_loss.append(line["total_dose_rmse"])
-    mask_loss.append(line["total_mask_rmse"])
+    #mask_loss.append(line["total_mask_rmse"])
 test = pd.DataFrame({
     "cell_acc": cell_acc,
     "drug_acc": drug_acc,
     "dose_rmse": dose_loss,
-    "mask_rmse": mask_loss
+    #"mask_rmse": mask_loss
 })
 test.to_csv(result_dir+mode+"_epoch.tsv",sep="\t")
 display(test)
 #%%
-model=torch.load(result_dir+"lm.ep5.pth")
+model=torch.load(result_dir+"lm.ep9.pth")
+print(model.parameters)
 
+#%%
 cell_vocab_path ="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt"
 drug_vocab_path="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt"
 test_dataset="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx"

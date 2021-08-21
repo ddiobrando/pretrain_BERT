@@ -2,7 +2,7 @@
 from cmapPy.pandasGEXpress import parse, write_gctx, GCToo
 import numpy as np
 import pandas as pd
-from k_means_constrained import KMeansConstrained
+#from k_means_constrained import KMeansConstrained
 from sklearn.model_selection import train_test_split
 data_dir = '/rd1/user/tanyh/perturbation/CPA/datasets/'
 
@@ -24,6 +24,7 @@ geneInfo = pd.read_csv(geneFileName, sep = "\t")
 lmInfo = geneInfo["gene_id"][geneInfo["feature_space"] == "landmark"].astype(str) # landmark genes only
 print(geneInfo.shape)
 print(lmInfo.shape)
+lmInfo.to_csv("gene_vocab.txt",index=None, header=None)
 
 
 #x = parse.parse(file_path = 'level5_beta_trt_cp_n720216x12328.gctx', rid = lmInfo)
@@ -34,19 +35,30 @@ lincs_cp.col_metadata_df["cell"] = sigInfoCP["cell_iname"]
 lincs_cp.col_metadata_df["drug"] = sigInfoCP["cmap_name"]
 lincs_cp.col_metadata_df["dose"] = sigInfoCP["pert_dose"]
 print(lincs_cp.data_df.shape)
-write_gctx.write(lincs_cp, "trt_cp_landmarkonly_split.gctx")
-
+#write_gctx.write(lincs_cp, "trt_cp_landmarkonly_split.gctx")
+#%%
+"""percent=np.zeros((lincs_cp.data_df.shape[0],))
+for i in range(lincs_cp.data_df.shape[0]):
+    row=lincs_cp.data_df.iloc[i,:]
+    percent[i]=row[row>-1][row<1].shape[0]/row.shape[0]
+print(percent.min(),percent.max())"""
 #%%
 lincs_cp = parse.parse("trt_cp_landmarkonly_split.gctx")
 train_index, test_index = train_test_split(range(lincs_cp.data_df.shape[1]),test_size=0.01, random_state=0)
 lincs_cp_train = GCToo.GCToo(lincs_cp.data_df.iloc[:, train_index], col_metadata_df=lincs_cp.col_metadata_df.iloc[train_index, :])
 print(lincs_cp_train.data_df.shape)
 print(lincs_cp_train.col_metadata_df.shape)
-write_gctx.write(lincs_cp_train, "trt_cp_landmarkonly_train.gctx")
+#write_gctx.write(lincs_cp_train, "trt_cp_landmarkonly_train.gctx")
 lincs_cp_test =  GCToo.GCToo(lincs_cp.data_df.iloc[:, test_index], col_metadata_df=lincs_cp.col_metadata_df.iloc[test_index, :])
 print(lincs_cp_test.data_df.shape)
 print(lincs_cp_test.col_metadata_df.shape)
-write_gctx.write(lincs_cp_test, "trt_cp_landmarkonly_test.gctx")
+#write_gctx.write(lincs_cp_test, "trt_cp_landmarkonly_test.gctx")
+
+#%%
+#lincs_cp_train = parse.parse("trt_cp_landmarkonly_train.gctx")
+lincs_cp_test = parse.parse("trt_cp_landmarkonly_test.gctx")
+#print(np.max(lincs_cp_train.col_metadata_df["dose"]))
+#print(np.max(lincs_cp_test.col_metadata_df["dose"]))
 
 #%%
 for i, row in sigInfoCP.iterrows():

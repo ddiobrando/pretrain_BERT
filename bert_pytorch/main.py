@@ -6,6 +6,7 @@ import torch
 
 from torch.utils.data import DataLoader
 import numpy as np
+import pandas as pd
 
 from model import BERT
 from trainer import BERTTrainer
@@ -19,15 +20,16 @@ def train():
     parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
     parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
+    parser.add_argument("-gv", "--gene_thre_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/dist_info.csv", type=str, help="built vocab model path with bert-vocab")
     #parser.add_argument("-kl", "--kmeans_labels_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/kmeans_label.npy", type=str, help="kmeans_label.npy")
-    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/0817/", type=str, help="ex)output/")
+    parser.add_argument("-o", "--output_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_2_2/", type=str, help="ex)output/")
 
     parser.add_argument("-hs", "--hidden", type=int, default=768, help="hidden size of transformer model")
     parser.add_argument("-l", "--layers", type=int, default=12, help="number of layers")
     parser.add_argument("-a", "--attn_heads", type=int, default=12, help="number of attention heads")
 
-    parser.add_argument("-b", "--batch_size", type=int, default=128, help="number of batch_size")
-    parser.add_argument("-e", "--epochs", type=int, default=100, help="number of epochs")
+    parser.add_argument("-b", "--batch_size", type=int, default=64, help="number of batch_size")
+    parser.add_argument("-e", "--epochs", type=int, default=5, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
     parser.add_argument("--with_cuda", type=bool, default=True, help="training with CUDA: true, or false")
@@ -46,9 +48,13 @@ def train():
     print(args)
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
-    np.random.seed(0)
-    random.seed(0)
-    torch.random.seed(0)
+
+    seed=0
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    #torch.backends.cudnn.deterministic = True
+    random.seed(seed)
+
 
     print("Loading Cell Vocab", args.cell_vocab_path)
     with open(args.cell_vocab_path) as f:
@@ -60,12 +66,16 @@ def train():
         drug_vocab = f.read().split('\n')
     print("Vocab Drug Size: ", len(drug_vocab))
 
+    print("Loading Gene Thre", args.gene_thre_path)
+    gene_thre = pd.read_csv(args.gene_thre_path, index_col=0)
+
     print("Loading Train Dataset", args.train_dataset)
-    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab)
+    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab, gene_thre)
     args.seq_len = train_dataset.seq_len
+    args.gen_len = train_dataset.gen_len
 
     print("Loading Test Dataset", args.test_dataset)
-    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab) \
+    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab, gene_thre) \
         if args.test_dataset is not None else None
 
     print("Creating Dataloader")
@@ -74,10 +84,10 @@ def train():
         if test_dataset is not None else None
 
     print("Building BERT model")
-    bert = BERT(hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
+    bert = BERT(args.gen_len,hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
 
     print("Creating BERT Trainer")
-    trainer = BERTTrainer(bert, len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
+    trainer = BERTTrainer(bert, args.gen_len,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
                           lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
                           with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name)
 
