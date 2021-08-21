@@ -7,12 +7,14 @@ from dataset import BERTDataset
 from torch.utils.data import DataLoader
 import tqdm
 import numpy as np
-
+import os
+os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_LAUNCH_BLOCKING"]="1"
 
 plt.switch_backend('agg')
 
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_2_2/"
-result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_0/"
+result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/"
+#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_128_0/"
 #result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_512_4_8/"
 
 #%%
@@ -106,16 +108,17 @@ test = pd.DataFrame({
 test.to_csv(result_dir+mode+"_epoch.tsv",sep="\t")
 display(test)
 #%%
-model=torch.load(result_dir+"lm.ep9.pth")
+model=torch.load(result_dir+"lm.ep4.pth", map_location="cuda:0")
 print(model.parameters)
 
 #%%
 cell_vocab_path ="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt"
 drug_vocab_path="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt"
 test_dataset="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx"
+gene_thre_path="/rd1/user/tanyh/perturbation/pretrain_BERT/dist_info.csv"
 num_workers=5
-batch_size=128
-device = 'cpu'
+batch_size=4
+device = 'cuda:0'
 
 with open(cell_vocab_path) as f:
     cell_vocab = f.read().split('\n')
@@ -123,7 +126,9 @@ with open(cell_vocab_path) as f:
 with open(drug_vocab_path) as f:
     drug_vocab = f.read().split('\n')
 
-test_dataset = BERTDataset(test_dataset, cell_vocab,drug_vocab)
+gene_thre = pd.read_csv(gene_thre_path, index_col=0)
+
+test_dataset = BERTDataset(test_dataset, cell_vocab,drug_vocab, gene_thre)
 data_loader = DataLoader(test_dataset, batch_size=batch_size, num_workers=num_workers)
 
 
@@ -148,10 +153,10 @@ for i, data in data_iter:
     # 1. forward the next_sentence_prediction and masked_lm model
     cell_output,drug_output, dose_output, mask_lm_output = model.forward(data["bert_input"])
 
-    dose_loss = mse(dose_output, data["dose"])
-    mask_loss = mse(mask_lm_output, data["bert_label"])
-    print('pred', mask_lm_output)
-    print('true', data["bert_label"])
+    #dose_loss = mse(dose_output, data["dose"])
+    #mask_loss = mse(mask_lm_output, data["bert_label"])
+    #print('pred', mask_lm_output)
+    #print('true', data["bert_label"])
     break
 
     # prediction accuracy

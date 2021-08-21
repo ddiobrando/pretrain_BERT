@@ -1,5 +1,11 @@
 # BERT-pytorch
 
+```
+CUDA_VISIBLE_DEVICES=1 python3 main.py -hs 128 -l 2 -a 2 -o /rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/
+```
+
+
+
 [![LICENSE](https://img.shields.io/github/license/codertimo/BERT-pytorch.svg)](https://github.com/codertimo/BERT-pytorch/blob/master/LICENSE)
 ![GitHub issues](https://img.shields.io/github/issues/codertimo/BERT-pytorch.svg)
 [![GitHub stars](https://img.shields.io/github/stars/codertimo/BERT-pytorch.svg)](https://github.com/codertimo/BERT-pytorch/stargazers)
