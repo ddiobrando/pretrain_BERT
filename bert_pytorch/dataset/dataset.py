@@ -13,10 +13,11 @@ class BERTDataset(Dataset):
         """
         self.cell_vocab = cell_vocab
         self.drug_vocab = drug_vocab
-        self.special = ["PAD","CLS","MASK"]
+        self.special = ["PAD","CLS","MASK","UNK"]
         self.pad_index = 0
         self.cls_index = 1
         self.mask_index = 2
+        self.unk_index = 3
         data = parse.parse(data_path)
         self.data_df = data.data_df.values.T
         self.seq_len = 512
