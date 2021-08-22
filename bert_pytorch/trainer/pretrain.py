@@ -116,6 +116,12 @@ class BERTTrainer:
         total_mask_element = 0
 
         for i, data in data_iter:
+            if train:
+                self.model.train()
+                torch.set_grad_enabled(True)
+            else:
+                self.model.eval()
+                torch.set_grad_enabled(False)
             # 0. batch_data will be sent into the device(GPU or cpu)
             data = {key: value.to(self.device) for key, value in data.items()}
 

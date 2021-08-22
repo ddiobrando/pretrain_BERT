@@ -29,7 +29,7 @@ def train():
     parser.add_argument("-a", "--attn_heads", type=int, default=12, help="number of attention heads")
 
     parser.add_argument("-b", "--batch_size", type=int, default=64, help="number of batch_size")
-    parser.add_argument("-e", "--epochs", type=int, default=5, help="number of epochs")
+    parser.add_argument("-e", "--epochs", type=int, default=20, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
     parser.add_argument("--with_cuda", type=bool, default=True, help="training with CUDA: true, or false")
