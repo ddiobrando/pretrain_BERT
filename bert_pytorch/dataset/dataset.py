@@ -104,6 +104,7 @@ class BERTDataset(Dataset):
             prob = random.random()
             if prob < 0.15:
                 prob /= 0.15
+                output_label.append(tokens[i])
 
                 # 80% randomly change token to mask token
                 if prob < 0.8:
@@ -118,7 +119,6 @@ class BERTDataset(Dataset):
                 #    tokens[i] = tokens[i]
 
                 #output_label.append(self.vocab.stoi.get(token, self.vocab.unk_index))
-                output_label.append(tokens[i])
             else:
                 #tokens[i] = self.vocab.stoi.get(token, self.vocab.unk_index)
                 output_label.append(0)
