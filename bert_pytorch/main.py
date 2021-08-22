@@ -16,8 +16,8 @@ from dataset import BERTDataset
 def train():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
-    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
+    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/dataset/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
+    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/dataset/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
     parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-gv", "--gene_thre_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/dist_info.csv", type=str, help="built vocab model path with bert-vocab")
