@@ -58,8 +58,8 @@ class BERTLM(nn.Module):
         #self.conv1d = nn.Conv1d(in_channels=1, out_channels=self.bert.hidden, kernel_size=kernel_size, stride=stride)
         #self.linear1 = MLP([seq_len, self.bert.hidden, self.bert.hidden])
         #self.linear2 = MLP([seq_len, self.bert.hidden, self.bert.hidden])
-        self.cell_prediction = CellPrediction(self.bert.hidden, cell_size)
-        self.drug_prediction = DrugPrediction(self.bert.hidden, drug_size)
+        #self.cell_prediction = CellPrediction(self.bert.hidden, cell_size)
+        #self.drug_prediction = DrugPrediction(self.bert.hidden, drug_size)
         self.dose_prediction = DosePrediction(self.bert.hidden)
         self.mask_lm = MaskedLanguageModel(self.bert.hidden, vocab_size)
 
@@ -71,10 +71,11 @@ class BERTLM(nn.Module):
         #x = x.permute(0,2,1)
         #x = torch.stack([self.linear1(x),self.linear2(x)],axis=1)
         x = self.bert(x)
-        return self.cell_prediction(x),self.drug_prediction(x), self.dose_prediction(x), self.mask_lm(x)
+        return self.dose_prediction(x), self.mask_lm(x)
+        #return self.cell_prediction(x),self.drug_prediction(x), self.dose_prediction(x), self.mask_lm(x)
 
 
-class CellPrediction(nn.Module):
+'''class CellPrediction(nn.Module):
     """
     n-class classification model
     """
@@ -105,7 +106,7 @@ class DrugPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x[:, 0, :]))
+        return self.softmax(self.linear(x[:, 0, :]))'''
 
 
 class DosePrediction(nn.Module):

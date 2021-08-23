@@ -16,8 +16,8 @@ from dataset import BERTDataset
 def train():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
-    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/pretrain_BERT/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
+    parser.add_argument("-c", "--train_dataset", default="/rd1/user/tanyh/perturbation/dataset/trt_cp_landmarkonly_train.gctx", type=str, help="train dataset for train bert")
+    parser.add_argument("-t", "--test_dataset", type=str, default="/rd1/user/tanyh/perturbation/dataset/trt_cp_landmarkonly_test.gctx", help="test set for evaluate train set")
     parser.add_argument("-cv", "--cell_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-dv", "--drug_vocab_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt", type=str, help="built vocab model path with bert-vocab")
     parser.add_argument("-gv", "--gene_thre_path", default="/rd1/user/tanyh/perturbation/pretrain_BERT/dist_info.csv", type=str, help="built vocab model path with bert-vocab")
@@ -70,12 +70,12 @@ def train():
     gene_thre = pd.read_csv(args.gene_thre_path, index_col=0)
 
     print("Loading Train Dataset", args.train_dataset)
-    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab, gene_thre)
+    train_dataset = BERTDataset(args.train_dataset, cell_vocab,drug_vocab, gene_thre, True)
     args.seq_len = train_dataset.seq_len
-    args.gen_len = train_dataset.gen_len
+    args.vocab_size = train_dataset.gen_len + train_dataset.cell_len + train_dataset.drug_len
 
     print("Loading Test Dataset", args.test_dataset)
-    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab, gene_thre) \
+    test_dataset = BERTDataset(args.test_dataset, cell_vocab,drug_vocab, gene_thre, False) \
         if args.test_dataset is not None else None
 
     print("Creating Dataloader")
@@ -84,10 +84,10 @@ def train():
         if test_dataset is not None else None
 
     print("Building BERT model")
-    bert = BERT(args.gen_len,hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
+    bert = BERT(args.vocab_size,hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
 
     print("Creating BERT Trainer")
-    trainer = BERTTrainer(bert, args.gen_len,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
+    trainer = BERTTrainer(bert, args.vocab_size,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
                           lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
                           with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name)
 
