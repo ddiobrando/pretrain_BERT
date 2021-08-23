@@ -126,7 +126,8 @@ class BERTTrainer:
             data = {key: value.to(self.device) for key, value in data.items()}
 
             # 1. forward the next_sentence_prediction and masked_lm model
-            cell_output,drug_output, dose_output, mask_lm_output = self.model.forward(data["bert_input"])
+            #cell_output,drug_output, dose_output, mask_lm_output = self.model.forward(data["bert_input"])
+            dose_output, mask_lm_output = self.model.forward(data["bert_input"])
 
             # 2-1. NLL(negative log likelihood) loss of is_next classification result
             #print('cell_output',cell_output.shape,'cell',data["cell"].shape)
@@ -134,8 +135,8 @@ class BERTTrainer:
             #print('dose_output',dose_output.shape,'dose',data["dose"].shape)
             #print('mask',mask_lm_output.shape,'dose',data["bert_label"].shape)
 
-            cell_loss = self.nll(cell_output, data["cell"])
-            drug_loss = self.nll(drug_output, data["drug"])
+            #cell_loss = self.nll(cell_output, data["cell"])
+            #drug_loss = self.nll(drug_output, data["drug"])
             dose_loss = self.mse(dose_output, data["dose"])
             #dose_loss = self.mse(dose_output/data["dose"], torch.ones(dose_output.shape,device=self.device))
 
@@ -143,7 +144,8 @@ class BERTTrainer:
             mask_loss = self.nll(mask_lm_output.transpose(1,2), data["bert_label"])
 
             # 2-3. Adding class_loss and mask_loss : 3.4 Pre-training Procedure
-            loss = cell_loss + drug_loss + dose_loss + mask_loss
+            #loss = cell_loss + drug_loss + dose_loss + mask_loss
+            loss = dose_loss + mask_loss
             #print('cell_loss',cell_loss.item(),'drug_loss',drug_loss.item(),'dose_loss',dose_loss.item(),'mask_loss',mask_loss.item())
 
             # 3. backward and optimization only in train
@@ -155,10 +157,10 @@ class BERTTrainer:
             avg_loss += loss.item()
 
             # prediction accuracy
-            for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
-                correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
-                total_correct[k] += correct
-                total_element[k] += data[class_type].nelement()
+            #for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
+            #    correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
+            #    total_correct[k] += correct
+            #    total_element[k] += data[class_type].nelement()
             total_dose_loss += dose_loss.item()*data["dose"].nelement()
             total_dose_element += data["dose"].nelement()
             #total_mask_loss += mask_loss.item()*data["bert_input"].nelement()
@@ -170,8 +172,8 @@ class BERTTrainer:
                     "iter": i,
                     "avg_loss": avg_loss / (i + 1),
                     "avg_acc": (total_correct / total_element * 100).tolist(),
-                    "cell_loss": cell_loss.item(),
-                    "drug_loss": drug_loss.item(),
+                    #"cell_loss": cell_loss.item(),
+                    #"drug_loss": drug_loss.item(),
                     "dose_loss": dose_loss.item(),
                     "mask_loss": mask_loss.item(),
                     "loss": loss.item()
@@ -181,7 +183,7 @@ class BERTTrainer:
 
         epoch_log = {"epoch":epoch,
         "avg_loss":avg_loss / len(data_iter),
-        "total_acc":(total_correct * 100.0 / total_element).tolist(),
+        #"total_acc":(total_correct * 100.0 / total_element).tolist(),
         "total_dose_rmse":(total_dose_loss/total_dose_element)**0.5,
         #"total_mask_rmse":(total_mask_loss/total_mask_element)**0.5
         }
