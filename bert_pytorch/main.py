@@ -7,8 +7,9 @@ import torch
 from torch.utils.data import DataLoader
 import numpy as np
 import pandas as pd
+from torch.optim import Adam
 
-from model import BERT
+from model import BERT, BERTLM
 from trainer import BERTTrainer
 from dataset import BERTDataset
 
@@ -29,7 +30,7 @@ def train():
     parser.add_argument("-a", "--attn_heads", type=int, default=12, help="number of attention heads")
 
     parser.add_argument("-b", "--batch_size", type=int, default=64, help="number of batch_size")
-    parser.add_argument("-e", "--epochs", type=int, default=20, help="number of epochs")
+    parser.add_argument("-e", "--epochs", type=int, default=300, help="number of epochs")
     parser.add_argument("-w", "--num_workers", type=int, default=5, help="dataloader worker size")
 
     parser.add_argument("--with_cuda", type=bool, default=True, help="training with CUDA: true, or false")
@@ -41,6 +42,9 @@ def train():
     parser.add_argument("--adam_beta1", type=float, default=0.9, help="adam first beta value")
     parser.add_argument("--adam_beta2", type=float, default=0.999, help="adam first beta value")
 
+    parser.add_argument("--resume", type=str, default="-1", help="Resume from which epoch")
+    parser.add_argument("--seed", type=int, default=0, help="Random seed")
+
     args = parser.parse_args()
     if not args.output_path.endswith('/'):
         args.output_path += '/'
@@ -49,11 +53,10 @@ def train():
     if not os.path.exists(args.output_path):
         os.makedirs(args.output_path)
 
-    seed=0
-    torch.manual_seed(seed)
-    np.random.seed(seed)
+    torch.manual_seed(args.seed)
+    np.random.seed(args.seed)
     #torch.backends.cudnn.deterministic = True
-    random.seed(seed)
+    random.seed(args.seed)
 
 
     print("Loading Cell Vocab", args.cell_vocab_path)
@@ -83,16 +86,33 @@ def train():
     test_data_loader = DataLoader(test_dataset, batch_size=args.batch_size, num_workers=args.num_workers) \
         if test_dataset is not None else None
 
-    print("Building BERT model")
-    bert = BERT(args.gen_len,hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
+    if os.path.exists(args.output_path+"bert.ep"+args.resume+".pth"):
+        bert = torch.load(args.output_path+"bert.ep"+args.resume+".pth")
+        optim=None
+        if os.path.exists(args.output_path+"lm.ep"+args.resume+".pth"):
+            print("Load model from",args.output_path+"lm.ep"+args.resume+".pth")
+            model = torch.load(args.output_path+"lm.ep"+args.resume+".pth")   
+        if os.path.exists(args.output_path+"optim.ep"+args.resume+".pth"):
+            print("Load model from",args.output_path+"optim.ep"+args.resume+".pth")
+            optim = Adam(model.parameters())
+            optim.load_state_dict(torch.load(args.output_path+"optim.ep"+args.resume+".pth"))   
+    
+        trainer = BERTTrainer(bert, args.gen_len,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
+            lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
+            with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name,resume=model,optim=optim)
 
-    print("Creating BERT Trainer")
-    trainer = BERTTrainer(bert, args.gen_len,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
-                          lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
-                          with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name)
+    else:
+        args.resume = "-1"
+        print("Building BERT model")
+        bert = BERT(args.gen_len,hidden=args.hidden, n_layers=args.layers, attn_heads=args.attn_heads)
+
+        print("Creating BERT Trainer")
+        trainer = BERTTrainer(bert, args.gen_len,len(cell_vocab),len(drug_vocab), args.seq_len,train_dataloader=train_data_loader, test_dataloader=test_data_loader,
+                            lr=args.lr, betas=(args.adam_beta1, args.adam_beta2), weight_decay=args.adam_weight_decay,
+                            with_cuda=args.with_cuda, cuda_devices=args.cuda_devices, log_freq=args.log_freq, log_name=args.log_name)
 
     print("Training Start")
-    for epoch in range(args.epochs):
+    for epoch in range(int(args.resume)+1, args.epochs):
         trainer.train(epoch)
         trainer.save(epoch, args.output_path)
 

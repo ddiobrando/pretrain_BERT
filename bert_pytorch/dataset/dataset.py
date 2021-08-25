@@ -40,7 +40,9 @@ class BERTDataset(Dataset):
 
     def __getitem__(self, item):
         t1, cell, drug, dose = self.data_df[item], self.cell[item], self.drug[item], self.dose[item]
-        thre_idx = random.randrange(29,70) # 30% - 70%
+        #thre_idx = random.randrange(0,99)
+        #thre_idx = random.randrange(29,70) # 30% - 70%
+        thre_idx = random.randrange(19,80) # 20% - 80%
         t1_tokens = []
         if thre_idx < 50:
             for gene_idx, thre in enumerate(self.gene_thre.iloc[thre_idx, :].values):
