@@ -1,15 +1,17 @@
-import os
-import torch
-import torch.nn as nn
-from torch.optim import Adam
-from torch.utils.data import DataLoader
-import numpy as np
-import json
-from model import BERTLM, BERT
-from trainer.optim_schedule import ScheduledOptim
-
 import tqdm
+import torch
+import pdb
 
+from torch.utils.data import DataLoader
+import pandas as pd
+from torch.optim import Adam
+from torch import nn
+from trainer.optim_schedule import ScheduledOptim
+from model.imputation import Imputation
+
+from model import BERT
+import json
+import os
 
 def write(log_name, post_fix):
     if os.path.exists(log_name):
@@ -21,19 +23,11 @@ def write(log_name, post_fix):
     with open(log_name, 'w') as f:
         json.dump(data, f)
 
-
-class BERTTrainer:
+class ImputeTrainer:
     """
-    BERTTrainer make the pretrained BERT model with two LM training method.
-
-        1. Masked Language Model : 3.3.1 Task #1: Masked LM
-        2. Next Sentence prediction : 3.3.2 Task #2: Next Sentence Prediction
-
-    please check the details on README.md with simple example.
-
     """
 
-    def __init__(self, bert: BERT, gene_vocab_size: int, cell_vocab_size: int, drug_vocab_size: int, seq_len: int,
+    def __init__(self, bert: BERT, gene_thre: pd.DataFrame, seq_len: int,
                  train_dataloader: DataLoader, test_dataloader: DataLoader = None,
                  lr: float = 1e-4, betas=(0.9, 0.999), weight_decay: float = 0.01, warmup_steps=10000,
                  with_cuda: bool = True, cuda_devices=None, log_freq: int = 10, log_name="train_info.json",
@@ -59,7 +53,7 @@ class BERTTrainer:
 
         if resume is None:
             # Initialize the BERT Language Model, with BERT model
-            self.model = BERTLM(bert, gene_vocab_size,cell_vocab_size, drug_vocab_size).to(self.device)
+            self.model = Imputation(bert,gene_thre,gene_thre.shape[1]).to(self.device)
         else:
             self.model = resume.to(self.device)
         print(self.model)
@@ -79,8 +73,6 @@ class BERTTrainer:
             self.optim = optim
         self.optim_schedule = ScheduledOptim(self.optim, self.bert.hidden, n_warmup_steps=warmup_steps)
 
-        # Using Negative Log Likelihood Loss function for predicting the masked_token
-        self.nll = nn.NLLLoss(ignore_index=0)
         self.mse = nn.MSELoss(reduction='mean')
 
         self.log_freq = log_freq
@@ -116,12 +108,8 @@ class BERTTrainer:
                               bar_format="{l_bar}{r_bar}")
 
         avg_loss = 0.0
-        total_correct = np.zeros(3)
-        total_element = np.zeros(3)
-        total_dose_loss = 0.0
-        total_dose_element = 0
-        #total_mask_loss = 0.0
-        #total_mask_element = 0
+        total_mask_loss = 0.0
+        total_mask_element = 0
 
         for i, data in data_iter:
             if train:
@@ -131,27 +119,15 @@ class BERTTrainer:
                 self.model.eval()
                 torch.set_grad_enabled(False)
             # 0. batch_data will be sent into the device(GPU or cpu)
-            data = {key: value.to(self.device) for key, value in data.items()}
+            #data = {key: value.to(self.device) for key, value in data.items()}
+            data["bert_label"] = data["bert_label"].to(self.device)
 
             # 1. forward the next_sentence_prediction and masked_lm model
-            cell_output,drug_output, dose_output, mask_lm_output = self.model.forward(data["bert_input"])
-
-            # 2-1. NLL(negative log likelihood) loss of is_next classification result
-            #print('cell_output',cell_output.shape,'cell',data["cell"].shape)
-            #print('drug_output',drug_output.shape,'drug',data["drug"].shape)
-            #print('dose_output',dose_output.shape,'dose',data["dose"].shape)
-            #print('mask',mask_lm_output.shape,'dose',data["bert_label"].shape)
-
-            cell_loss = self.nll(cell_output, data["cell"])
-            drug_loss = self.nll(drug_output, data["drug"])
-            dose_loss = self.mse(dose_output, data["dose"])
+            mask_lm_output = self.model.forward(data["bert_input"], self.device)
 
             # 2-2. MSELoss of predicting masked token word
-            mask_loss = self.nll(mask_lm_output.transpose(1,2), data["bert_label"])
-
-            # 2-3. Adding class_loss and mask_loss : 3.4 Pre-training Procedure
-            loss = cell_loss + drug_loss + dose_loss + mask_loss
-            #print('cell_loss',cell_loss.item(),'drug_loss',drug_loss.item(),'dose_loss',dose_loss.item(),'mask_loss',mask_loss.item())
+            mask=data["bert_label"]>-66
+            loss = self.mse(mask_lm_output[mask], data["bert_label"][mask])
 
             # 3. backward and optimization only in train
             if train:
@@ -160,36 +136,14 @@ class BERTTrainer:
                 self.optim_schedule.step_and_update_lr()
 
             avg_loss += loss.item()
-
-            for k,(output, class_type) in enumerate(zip([cell_output, drug_output], ["cell", "drug"])):
-                correct = output.argmax(dim=-1).eq(data[class_type]).sum().item()
-                total_correct[k] += correct
-                total_element[k] += data[class_type].nelement()
-            #valid_idx = [data["bert_label"]!=0]
-            #correct = mask_lm_output[valid_idx].argmax(dim=-1).eq(data["bert_label"][valid_idx]).sum().item()
-            #total_correct[2] += correct
-            #total_element[2] += data["bert_label"][valid_idx].nelement()
-            valid_idx = data["bert_label"]!=0
-            batch_size, seq_len, vocab_size = mask_lm_output.shape
-            masked_mask_output = torch.masked_select(mask_lm_output,valid_idx.unsqueeze(2).expand(batch_size, seq_len, vocab_size)).reshape(-1,vocab_size)
-            masked_label = torch.masked_select(data["bert_label"],valid_idx)
-            correct = masked_mask_output.argmax(dim=-1).eq(masked_label).sum().item()
-            total_correct[2] += correct
-            total_element[2] += masked_label.nelement()
-            
-            total_dose_loss += dose_loss.item()*data["dose"].nelement()
-            total_dose_element += data["dose"].nelement()
-
+            label_nelement = data["bert_label"][mask].nelement()
+            total_mask_loss += loss.item()*label_nelement
+            total_mask_element += label_nelement
             if i % self.log_freq == 0:
                 post_fix = {
                     "epoch": epoch,
                     "iter": i,
                     "avg_loss": avg_loss / (i + 1),
-                    "avg_acc": (total_correct / total_element * 100).tolist(),
-                    "cell_loss": cell_loss.item(),
-                    "drug_loss": drug_loss.item(),
-                    "dose_loss": dose_loss.item(),
-                    "mask_loss": mask_loss.item(),
                     "loss": loss.item()
                 }
                 write(log_name, post_fix)
@@ -197,9 +151,7 @@ class BERTTrainer:
 
         epoch_log = {"epoch":epoch,
         "avg_loss":avg_loss / len(data_iter),
-        "total_acc":(total_correct * 100.0 / total_element).tolist(),
-        "total_dose_rmse":(total_dose_loss/total_dose_element)**0.5,
-        #"total_mask_rmse":(total_mask_loss/total_mask_element)**0.5
+        "total_mask_rmse":(total_mask_loss/total_mask_element)**0.5
         }
         write(epoch_log_name,epoch_log)
         print(epoch_log)
@@ -215,8 +167,8 @@ class BERTTrainer:
         bert_output_path = file_path + "bert.ep%d.pth" % epoch
         torch.save(self.bert.cpu(), bert_output_path)
         self.bert.to(self.device)
-        lm_output_path = file_path + "lm.ep%d.pth" % epoch
-        torch.save(self.optim.state_dict(), lm_output_path.replace("lm","optim"))
+        lm_output_path = file_path + "impute.ep%d.pth" % epoch
+        torch.save(self.optim.state_dict(), lm_output_path.replace("impute","optim"))
         torch.save(self.model.cpu(), lm_output_path)
         self.model.to(self.device)
         print("EP:%d Model Saved on:" % epoch, bert_output_path, lm_output_path)

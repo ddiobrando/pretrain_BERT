@@ -53,8 +53,8 @@ class BERTDataset(Dataset):
                 if t1[gene_idx] > thre:
                     t1_tokens.append(gene_idx+len(self.special))
         t1, t1_label = self.random_number(t1_tokens)
-        t1 = [self.cls_index] + t1
-        t1_label = [self.pad_index] + t1_label
+        t1 = [self.cls_index, self.cls_index, self.cls_index] + t1
+        t1_label = [self.pad_index, self.pad_index, self.pad_index] + t1_label
         bert_input = (t1)[:self.seq_len]
         bert_label = (t1_label)[:self.seq_len]
 

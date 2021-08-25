@@ -7,11 +7,7 @@ os.environ["CUDA_VISIBLE_DEVICES"]="7"
 
 plt.switch_backend('agg')
 
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/"
-result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_256_4_4/"
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_100_128_2_2/"
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_100_128_0_0/"
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_0_0/"
+result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT_splittask/output/split_3070_128_2_2/"
 
 #%%
 mode = 'train'

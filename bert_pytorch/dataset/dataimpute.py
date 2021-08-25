@@ -6,6 +6,8 @@ from cmapPy.pandasGEXpress import parse
 import numpy as np
 import pandas as pd
 
+
+
 class ImputeDataset(Dataset):
     def __init__(self, data_path, cell_vocab,drug_vocab, gene_thre): #, gene_vocab):
         """Remove encoding="utf-8", corpus_lines=None, on_memory=True
@@ -30,18 +32,20 @@ class ImputeDataset(Dataset):
         self.drug_serie = pd.Series(drug_dict)
         self.gene_thre = gene_thre
         assert self.gene_thre.shape[0]==99, "Expect gene_thre to be 1%, ... 99%" 
+        self.N = self.data_df.shape[0]
 
     def __len__(self):
-        return self.data_df.shape[0]
+        return self.N
 
     def __getitem__(self, item):
-        t1 = self.data_df[item]
+        i = np.random.choice(self.gene_thre.shape[0])
+        t1 = self.data_df[i]
         bert_input, bert_label = self.random_number(t1)
 
         output = {"bert_input": bert_input,
                   "bert_label": bert_label}
 
-        return {key: torch.tensor(value) for key, value in output.items()}
+        return output#{key: torch.tensor(value) for key, value in output.items()}
 
     def random_number(self, tokens):
         """ 
@@ -58,7 +62,7 @@ class ImputeDataset(Dataset):
 
                 # 80% randomly change token to mask token
                 if prob < 0.8:
-                    tokens[i] = 666
+                    tokens[i] = 66
 
                 # 10% randomly change token to random token
                 elif prob < 0.9:
@@ -69,7 +73,7 @@ class ImputeDataset(Dataset):
                 #    tokens[i] = token
 
             else:
-                output_label.append(0)
+                output_label.append(-66)
                 #tokens[i] = token
 
         return torch.Tensor(tokens), torch.Tensor(output_label)

@@ -1,7 +1,7 @@
 # BERT-pytorch
 
 ```
-CUDA_VISIBLE_DEVICES=1 python3 main.py -hs 128 -l 2 -a 2 -o /rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/
+CUDA_VISIBLE_DEVICES=6 python3 main.py -hs 128 -l 2 -a 2 -o /rd1/user/tanyh/perturbation/pretrain_BERT_splittask/output/split_3070_128_2_2/
 CUDA_VISIBLE_DEVICES=1,2 python3 main.py -hs 256 -l 4 -a 4 -o /rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_256_4_4/
 CUDA_VISIBLE_DEVICES=3,4,5 python3 main.py -hs 512 -l 4 -a 8 -o /rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_512_4_8/
 python3 main.py -hs 512 -l 8 -a 8 -o /rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_512_8_8/

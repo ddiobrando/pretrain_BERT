@@ -105,7 +105,7 @@ class DrugPrediction(nn.Module):
         self.softmax = nn.LogSoftmax(dim=-1)
 
     def forward(self, x):
-        return self.softmax(self.linear(x[:, 0, :]))
+        return self.softmax(self.linear(x[:, 1, :]))
 
 
 class DosePrediction(nn.Module):
@@ -122,7 +122,7 @@ class DosePrediction(nn.Module):
         self.linear = nn.Linear(hidden, 1)
 
     def forward(self, x):
-        return self.linear(x[:, 0, :])
+        return self.linear(x[:, 2, :])
 
 
 class MaskedLanguageModel(nn.Module):

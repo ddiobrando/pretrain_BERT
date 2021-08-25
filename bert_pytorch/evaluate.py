@@ -15,9 +15,8 @@ plt.switch_backend('agg')
 
 result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/"
 #result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_0_0/"
-#result_dir = "/rd1/user/tanyh/perturbation/pretrain_BERT/output/0821_3070_128_2_2/"
 
-model=torch.load(result_dir+"lm.ep19.pth", map_location="cuda:0")
+model=torch.load(result_dir+"lm.ep49.pth", map_location="cuda:0")
 cell_vocab_path ="/rd1/user/tanyh/perturbation/pretrain_BERT/cell_vocab.txt"
 drug_vocab_path="/rd1/user/tanyh/perturbation/pretrain_BERT/drug_vocab.txt"
 test_dataset="/rd1/user/tanyh/perturbation/dataset/trt_cp_landmarkonly_test.gctx"
@@ -89,3 +88,5 @@ epoch_log = {"avg_loss":avg_loss / len(data_iter),
 "total_dose_rmse":(total_dose_loss/total_dose_element)**0.5}
 print(epoch_log)
 
+
+# %%
