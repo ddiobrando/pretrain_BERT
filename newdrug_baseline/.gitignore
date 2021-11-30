@@ -1,0 +1,4 @@
+*.csv
+screenlog*
+*.pyc
+*.png
